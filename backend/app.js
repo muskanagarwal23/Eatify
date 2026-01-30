@@ -16,4 +16,6 @@ app.use("/api/vendor", require("./routes/vendorRoute"));
 
 app.use("/api/menu",require("./routes/menuRoutes"));
 
+app.use("/api/public", require("./routes/publicRoutes"));
+
 module.exports = app;
