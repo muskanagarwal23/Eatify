@@ -18,4 +18,6 @@ app.use("/api/menu",require("./routes/menuRoutes"));
 
 app.use("/api/public", require("./routes/publicRoutes"));
 
+app.use("/api/cart", require("./routes/cartRoutes"));
+
 module.exports = app;
