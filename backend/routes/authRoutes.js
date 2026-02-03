@@ -1,4 +1,4 @@
-console.log("Auth routes loaded");
+// console.log("Auth routes loaded");
 const router = require("express").Router();
 const {register, login} = require("../controllers/authController");
 
