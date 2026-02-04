@@ -22,4 +22,6 @@ app.use("/api/cart", require("./routes/cartRoutes"));
 
 app.use("/api/orders", require("./routes/orderRoutes"));
 
+app.use("/api/delivery", require("./routes/deliveryRoutes"));
+
 module.exports = app;

@@ -1,4 +1,5 @@
 const User = require("../models/user");
+const Delivery = require("../models/deliveryProfile")
 
 exports.getPendingVendors = async (requestAnimationFrame,res) => {
     const vendors = await User.find({
@@ -27,3 +28,28 @@ exports.approveVendor = async (req, res) => {
 
     res.json({message:"vendor approved"});
 };
+
+exports.getPendingDeliveryPartners = async (req, res) => {
+  const pending = await Delivery.find({ isApproved: false })
+    .populate("userId", "name email");
+
+  res.json(pending);
+};
+
+exports.approveDeliveryPartner = async (req, res) => {
+  const delivery = await Delivery.findById(req.params.id);
+
+  if (!delivery) {
+    return res.status(404).json({ message: "Delivery partner not found" });
+  }
+
+  delivery.isApproved = true;
+  await delivery.save();
+
+  await User.findByIdAndUpdate(delivery.userId, {
+    isActive: true
+  });
+
+  res.json({ message: "Delivery partner approved" });
+};
+
