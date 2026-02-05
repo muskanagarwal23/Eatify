@@ -1,5 +1,6 @@
 const User = require("../models/user");
-const Delivery = require("../models/deliveryProfile")
+const Delivery = require("../models/deliveryProfile");
+const Order = require("../models/order");
 
 exports.getPendingVendors = async (requestAnimationFrame,res) => {
     const vendors = await User.find({
@@ -53,3 +54,24 @@ exports.approveDeliveryPartner = async (req, res) => {
   res.json({ message: "Delivery partner approved" });
 };
 
+exports.assignDeliveryPartner = async (req, res) => {
+  const { deliveryPartnerId } = req.body;
+
+  const order = await Order.findById(req.params.orderId);
+
+  if (!order) {
+    return res.status(404).json({ message: "Order not found" });
+  }
+
+  if (order.status !== "ACCEPTED") {
+    return res.status(400).json({
+      message: "Order must be accepted before assignment"
+    });
+  }
+
+  order.deliveryPartnerId = deliveryPartnerId;
+  order.deliveryStatus = "ASSIGNED";
+  await order.save();
+
+  res.json({ message: "Delivery partner assigned" });
+};
