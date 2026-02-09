@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Razorpay Test Checkout</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  </head>
+  <body>
+    <h2>Razorpay Test Payment</h2>
+    <button id="pay-btn">Pay Now</button>
+
+    <script>
+      const options = {
+        key: "rzp_test_SE5Q7cauD6s1gL", // 👈 YOUR KEY ID
+        amount: 75000, // in paise
+        currency: "INR",
+        name: "Eatify Test",
+        description: "Order Payment",
+        order_id: "order_SE7eCLKVn63lFK", // 👈 YOUR ORDER ID
+        handler: function (response) {
+          console.log("Payment Success:", response);
+          alert("Payment successful! Check backend webhook.");
+        },
+        prefill: {
+          name: "Test User",
+          email: "test@example.com",
+          contact: "9999999999"
+        },
+        theme: {
+          color: "#3399cc"
+        }
+      };
+
+      const rzp = new Razorpay(options);
+
+      document.getElementById("pay-btn").onclick = function (e) {
+        rzp.open();
+        e.preventDefault();
+      };
+    </script>
+  </body>
+</html>
