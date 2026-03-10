@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const Order = require("../models/order");
+const { addTimelineEvent } = require("../utils/orderTimeline");
 
 exports.razorpayWebhook = async (req, res) => {
   try {
@@ -10,7 +11,7 @@ exports.razorpayWebhook = async (req, res) => {
 
     const expectedSignature = crypto
       .createHmac("sha256", secret)
-      .update(req.body) // <-- req.body IS RAW BUFFER NOW
+      .update(req.body)
       .digest("hex");
 
     if (expectedSignature !== signature) {
@@ -24,26 +25,33 @@ exports.razorpayWebhook = async (req, res) => {
     console.log("EVENT:", event);
 
     if (event === "payment.captured") {
+      console.log("PAYMENT CAPTURED EVENT RECEIVED"); 
       const razorpayOrderId =
         payload.payload.payment.entity.order_id;
 
       console.log("ORDER ID FROM WEBHOOK:", razorpayOrderId);
 
-      const order = await Order.findOneAndUpdate(
-        { "payment.razorpayOrderId": razorpayOrderId },
-        {
-          $set: {
-            "payment.status": "PAID",
-            status: "PREPARING"
-          }
-        },
-        { new: true }
+      const order = await Order.findOne({
+        "payment.razorpayOrderId": razorpayOrderId,
+      });
+
+      if (!order) {
+        console.log("⚠️ Order not found for Razorpay order");
+        return res.status(200).json({ status: "ignored" });
+      }
+
+      order.payment.status = "PAID";
+      order.status = "PREPARING";
+      console.log("ADDING TIMELINE EVENT");
+      await addTimelineEvent(
+        order,
+        "PAID",
+        "Payment confirmed successfully"
       );
 
-      console.log("UPDATED ORDER:", order?._id);
+      console.log("UPDATED ORDER:", order._id);
     }
 
-    // ✅ VERY IMPORTANT — respond 200
     res.status(200).json({ status: "ok" });
 
   } catch (error) {

@@ -3,6 +3,8 @@ const User = require("../models/user");
 const Delivery = require("../models/deliveryProfile");
 const cloudinary = require("../config/cloudinary");
 const Order = require("../models/order");
+const { getIO } = require("../socket");
+const { addTimelineEvent } = require("../utils/orderTimeline");
 
 exports.registerDelivery = async (req, res, next) => {
   try {
@@ -38,7 +40,7 @@ exports.registerDelivery = async (req, res, next) => {
             (error, result) => {
               if (error) return reject(error);
               resolve(result);
-            },
+            }
           )
           .end(req.file.buffer);
       });
@@ -50,50 +52,84 @@ exports.registerDelivery = async (req, res, next) => {
       licenseNumber,
       vehicleNumber,
       licenseDocument: {
-      url: uploadResult.secure_url,
-      publicId: uploadResult.public_id,
+        url: uploadResult.secure_url,
+        publicId: uploadResult.public_id,
       },
     });
 
     res.status(201).json({
       message: "Delivery partner registered. Await admin approval.",
     });
+
   } catch (err) {
     next(err);
   }
 };
 
 exports.getAssignedOrders = async (req, res) => {
-  const orders = await Order.find({
-    deliveryPartnerId: req.user.userId
-  }).sort({ createdAt: -1 });
+  try {
+    const orders = await Order.find({
+      deliveryPartnerId: req.user.userId,
+    }).sort({ createdAt: -1 });
 
-  res.json(orders);
+    res.json(orders);
+
+  } catch (error) {
+    console.error("Fetch assigned orders error:", error);
+    res.status(500).json({ message: "Failed to fetch assigned orders" });
+  }
 };
 
 exports.updateDeliveryStatus = async (req, res) => {
-  const { status } = req.body;
+  try {
+    const { status } = req.body;
 
-  const allowed = ["PICKED_UP", "DELIVERED"];
-  if (!allowed.includes(status)) {
-    return res.status(400).json({ message: "Invalid delivery status" });
+    const allowed = ["PICKED_UP", "DELIVERED"];
+
+    if (!allowed.includes(status)) {
+      return res.status(400).json({
+        message: "Invalid delivery status",
+      });
+    }
+
+    const order = await Order.findOne({
+      _id: req.params.orderId,
+      deliveryPartnerId: req.user.userId,
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        message: "Order not found",
+      });
+    }
+
+    order.deliveryStatus = status;
+
+    if (status === "DELIVERED") {
+      order.status = "DELIVERED";
+    }
+
+    await addTimelineEvent(
+      order,
+      status,
+      status === "PICKED_UP"
+        ? "Order picked up by delivery partner"
+        : "Order delivered successfully"
+    );
+
+    const io = getIO();
+
+    io.to(`order:${order._id}`).emit("deliveryStatusUpdated", {
+      orderId: order._id,
+      status,
+    });
+
+    res.json(order);
+
+  } catch (error) {
+    console.error("Delivery update error:", error);
+    res.status(500).json({
+      message: "Failed to update delivery status",
+    });
   }
-
-  const order = await Order.findOne({
-    _id: req.params.orderId,
-    deliveryPartnerId: req.user.userId
-  });
-
-  if (!order) {
-    return res.status(404).json({ message: "Order not found" });
-  }
-
-  order.deliveryStatus = status;
-
-  if (status === "DELIVERED") {
-    order.status = "DELIVERED";
-  }
-
-  await order.save();
-  res.json(order);
 };

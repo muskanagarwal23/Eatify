@@ -57,8 +57,18 @@ const OrderSchema = new mongoose.Schema(
         default: "PENDING",
       },
     },
+    timeline: [
+  {
+    status: String,
+    message: String,
+    timestamp: {
+      type: Date,
+      default: Date.now
+    }
+  }
+]
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("Order", OrderSchema);
