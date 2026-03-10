@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const Order = require("../models/order");
 const { addTimelineEvent } = require("../utils/orderTimeline");
+const { canTransition } = require("../utils/orderState");
 
 exports.razorpayWebhook = async (req, res) => {
   try {
@@ -25,9 +26,8 @@ exports.razorpayWebhook = async (req, res) => {
     console.log("EVENT:", event);
 
     if (event === "payment.captured") {
-      console.log("PAYMENT CAPTURED EVENT RECEIVED"); 
-      const razorpayOrderId =
-        payload.payload.payment.entity.order_id;
+      console.log("PAYMENT CAPTURED EVENT RECEIVED");
+      const razorpayOrderId = payload.payload.payment.entity.order_id;
 
       console.log("ORDER ID FROM WEBHOOK:", razorpayOrderId);
 
@@ -40,20 +40,23 @@ exports.razorpayWebhook = async (req, res) => {
         return res.status(200).json({ status: "ignored" });
       }
 
+      if (!canTransition(order.status, "PAID")) {
+        return res.status(400).json({
+          message: "Invalid order state transition",
+        });
+      }
+
       order.payment.status = "PAID";
-      order.status = "PREPARING";
+      order.status = "PAID";
+      
       console.log("ADDING TIMELINE EVENT");
-      await addTimelineEvent(
-        order,
-        "PAID",
-        "Payment confirmed successfully"
-      );
+      
+      await addTimelineEvent(order, "PAID", "Payment confirmed successfully");
 
       console.log("UPDATED ORDER:", order._id);
     }
 
     res.status(200).json({ status: "ok" });
-
   } catch (error) {
     console.error("WEBHOOK ERROR:", error);
     res.status(500).json({ message: "Webhook failed" });

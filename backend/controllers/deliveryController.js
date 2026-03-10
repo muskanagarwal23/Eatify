@@ -5,6 +5,7 @@ const cloudinary = require("../config/cloudinary");
 const Order = require("../models/order");
 const { getIO } = require("../socket");
 const { addTimelineEvent } = require("../utils/orderTimeline");
+const { canTransition } = require("../utils/orderState");
 
 exports.registerDelivery = async (req, res, next) => {
   try {
@@ -40,7 +41,7 @@ exports.registerDelivery = async (req, res, next) => {
             (error, result) => {
               if (error) return reject(error);
               resolve(result);
-            }
+            },
           )
           .end(req.file.buffer);
       });
@@ -60,7 +61,6 @@ exports.registerDelivery = async (req, res, next) => {
     res.status(201).json({
       message: "Delivery partner registered. Await admin approval.",
     });
-
   } catch (err) {
     next(err);
   }
@@ -73,7 +73,6 @@ exports.getAssignedOrders = async (req, res) => {
     }).sort({ createdAt: -1 });
 
     res.json(orders);
-
   } catch (error) {
     console.error("Fetch assigned orders error:", error);
     res.status(500).json({ message: "Failed to fetch assigned orders" });
@@ -103,8 +102,16 @@ exports.updateDeliveryStatus = async (req, res) => {
       });
     }
 
+    if (!canTransition(order.status, status)) {
+      return res.status(400).json({
+        message: `Invalid transition from ${order.status} to ${status}`,
+      });
+    }
     order.deliveryStatus = status;
 
+    if (status === "PICKED_UP") {
+      order.status = "PICKED_UP";
+    }
     if (status === "DELIVERED") {
       order.status = "DELIVERED";
     }
@@ -114,7 +121,7 @@ exports.updateDeliveryStatus = async (req, res) => {
       status,
       status === "PICKED_UP"
         ? "Order picked up by delivery partner"
-        : "Order delivered successfully"
+        : "Order delivered successfully",
     );
 
     const io = getIO();
@@ -125,7 +132,6 @@ exports.updateDeliveryStatus = async (req, res) => {
     });
 
     res.json(order);
-
   } catch (error) {
     console.error("Delivery update error:", error);
     res.status(500).json({

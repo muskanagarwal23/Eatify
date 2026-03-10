@@ -1,6 +1,7 @@
 const Order = require("../models/order");
 const Cart = require("../models/cart");
 const { addTimelineEvent } = require("../utils/orderTimeline");
+const {canTransition} = require("../utils/orderState");
 
 exports.placeOrder = async (req, res) => {
   const customerId = req.user.userId;
@@ -58,9 +59,11 @@ exports.updateOrderStatus = async (req, res) => {
     return res.status(404).json({ message: "Order not found" });
   }
 
-  if (!["ACCEPTED", "REJECTED", "PREPARING"].includes(status)) {
-    return res.status(400).json({ message: "Invalid status" });
-  }
+  if (!canTransition(order.status, status)) {
+  return res.status(400).json({
+    message: `Invalid transition from ${order.status} to ${status}`
+  });
+}
 
   order.status = status;
 

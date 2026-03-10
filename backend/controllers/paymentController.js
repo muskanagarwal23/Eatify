@@ -7,7 +7,7 @@ exports.createPaymentOrder = async (req, res) => {
   try {
     const order = await Order.findOne({
       _id: req.params.orderId,
-      customerId: req.user.userId
+      customerId: req.user.userId,
     });
 
     if (!order) {
@@ -25,12 +25,12 @@ exports.createPaymentOrder = async (req, res) => {
     const razorpayOrder = await razorpay.orders.create({
       amount: order.totalAmount * 100,
       currency: "INR",
-      receipt: `order_${order._id}`
+      receipt: `order_${order._id}`,
     });
 
     order.payment = {
       razorpayOrderId: razorpayOrder.id,
-      status: "PENDING"
+      status: "PENDING",
     };
 
     await order.save();
@@ -40,19 +40,16 @@ exports.createPaymentOrder = async (req, res) => {
       amount: razorpayOrder.amount,
       currency: razorpayOrder.currency,
       key: process.env.RAZORPAY_KEY_ID,
-      checkoutUrl: `https://checkout.razorpay.com/v1/checkout.js`
+      checkoutUrl: `https://checkout.razorpay.com/v1/checkout.js`,
     });
-
   } catch (error) {
     console.error("RAZORPAY ERROR:", error);
     res.status(500).json({
       message: "Payment order creation failed",
-      error: error.message || error
+      error: error.message || error,
     });
   }
 };
-
-
 
 exports.verifyPayment = async (req, res, next) => {
   try {
