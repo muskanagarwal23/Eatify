@@ -7,33 +7,35 @@ exports.addToCart = async (req, res) => {
 
   const menuItem = await Menu.findOne({
     _id: menuItemId,
-    isAvailable: true
+    isAvailable: true,
   });
 
   if (!menuItem) {
     return res.status(404).json({ message: "Item not available" });
   }
 
-  let cart = await Cart.findOne({ customerId });
+  let cart = await Cart.findOne({
+    customerId: req.user.userId,
+  });
 
   // If cart exists but vendor differs → reject
   if (cart && cart.vendorId.toString() !== menuItem.vendorId.toString()) {
     return res.status(400).json({
-      message: "Cart already contains items from another restaurant"
+      message: "Cart already contains items from another restaurant",
     });
   }
 
   if (!cart) {
     cart = await Cart.create({
-      customerId,
+      customerId: req.user.userId,
       vendorId: menuItem.vendorId,
       items: [],
-      totalAmount: 0
+      totalAmount: 0,
     });
   }
 
   const existingItem = cart.items.find(
-    item => item.menuItem.toString() === menuItemId
+    (item) => item.menuItem && item.menuItem.toString() === menuItemId.toString()
   );
 
   if (existingItem) {
@@ -42,13 +44,13 @@ exports.addToCart = async (req, res) => {
     cart.items.push({
       menuItem: menuItemId,
       quantity,
-      price: menuItem.price
+      price: menuItem.price,
     });
   }
 
   cart.totalAmount = cart.items.reduce(
     (sum, item) => sum + item.price * item.quantity,
-    0
+    0,
   );
 
   await cart.save();
@@ -58,54 +60,81 @@ exports.addToCart = async (req, res) => {
 
 exports.getCart = async (req, res) => {
   const cart = await Cart.findOne({
-    customerId: req.user.userId
+    customerId: req.user.userId,
   }).populate("items.menuItem", "name image price");
 
   res.json(cart || { items: [], totalAmount: 0 });
 };
 
-
 exports.updateQuantity = async (req, res) => {
-  const { menuItemId, quantity } = req.body;
+  try {
+    const { itemId, quantity } = req.body;
 
-  const cart = await Cart.findOne({
-    customerId: req.user.userId
-  });
+    const cart = await Cart.findOne({
+      customerId: req.user.userId,
+    });
+    
+    
+    if (!cart) {
+      return res.status(404).json({ message: "Cart not found" });
+    }
 
-  if (!cart) {
-    return res.status(404).json({ message: "Cart not found" });
-  }
-
-  const item = cart.items.find(
-    i => i.menuItem.toString() === menuItemId
-  );
-
-  if (!item) {
-    return res.status(404).json({ message: "Item not in cart" });
-  }
-
-  if (quantity <= 0) {
-    cart.items = cart.items.filter(
-      i => i.menuItem.toString() !== menuItemId
+    
+    
+    const item = cart.items.find(
+      (i) => i._id.toString() === itemId.toString()
     );
-  } else {
+ 
+
+    if (!item) {
+      return res.status(404).json({ message: "Item not in cart" });
+    }
+
     item.quantity = quantity;
+
+    cart.totalAmount = cart.items.reduce(
+      (sum, i) => sum + i.price * i.quantity,
+      0
+    );
+
+    await cart.save();
+    await cart.populate("items.menuItem");
+   if (global.io) {
+  global.io.to(req.user.userId.toString()).emit("cartUpdated", cart);
+}
+
+    res.json(cart);
+  } catch (err) {
+    console.error("❌ UPDATE ERROR:", err);
+    res.status(500).json({ message: err.message });
   }
-
-  cart.totalAmount = cart.items.reduce(
-    (sum, i) => sum + i.price * i.quantity,
-    0
-  );
-
-  await cart.save();
-  res.json(cart);
 };
 
+exports.removeItem = async (req, res) => {
+  try {
+    const { itemId } = req.params;
 
-exports.clearCart = async (req, res) => {
-  await Cart.findOneAndDelete({
-    customerId: req.user.userId
-  });
+    const cart = await Cart.findOne({ customerId: req.user.userId });
 
-  res.json({ message: "Cart cleared" });
+    // 🔥 FIX 1 — check cart exists
+    if (!cart) {
+      return res.status(404).json({ message: "Cart not found" });
+    }
+
+    cart.items = cart.items.filter(
+      (item) => item._id.toString() != itemId.toString()
+    );
+
+    
+    await cart.save();
+    await cart.populate("items.menuItem");
+   if (global.io) {
+  global.io.to(req.user.userId.toString()).emit("cartUpdated", cart);
+}
+
+    res.json(cart);
+  } catch (err) {
+    console.error("❌ REMOVE ITEM ERROR:", err);
+    res.status(500).json({ message: err.message });
+  }
 };

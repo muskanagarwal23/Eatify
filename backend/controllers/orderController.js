@@ -2,6 +2,8 @@ const Order = require("../models/order");
 const Cart = require("../models/cart");
 const { addTimelineEvent } = require("../utils/orderTimeline");
 const {canTransition} = require("../utils/orderState");
+const Vendor = require("../models/vendor");
+
 
 exports.placeOrder = async (req, res) => {
   const customerId = req.user.userId;
@@ -32,27 +34,58 @@ exports.placeOrder = async (req, res) => {
 };
 
 exports.getMyOrders = async (req, res) => {
+  try{
   const orders = await Order.find({
     customerId: req.user.userId,
-  }).sort({ createdAt: -1 });
+  }).populate("vendorId","name")
+    .populate("items.menuItem","image")
+    .populate({
+      path: "deliveryPartnerId",
+      select:"name phone"
+    })
+    .sort({ createdAt: -1 });
 
   res.json(orders);
+}catch(err){
+  res.status(500).json({message:"failed to fetch orders"});
+}
 };
 
 exports.getVendorOrders = async (req, res) => {
-  const orders = await Order.find({
-    vendorId: req.user.userId,
-  }).sort({ createdAt: -1 });
+  try {
+    console.log("TOKEN USER:", req.user);
+    const vendor = await Vendor.findOne({
+      userId:req.user.userId,
+    });
+    if(!vendor){
+      return res.status(404).json({message:"vendor not found"})
+    }
 
-  res.json(orders);
+    const orders = await Order.find({
+      vendorId: vendor._id,
+    }).populate("customerId", "name email phone")
+.populate("items.menuItem", "name image")
+.populate("deliveryPartnerId", "name phone")
+    .sort({ createdAt: -1 });
+
+    res.json(orders);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error fetching orders" });
+  }
 };
 
 exports.updateOrderStatus = async (req, res) => {
   const { status } = req.body;
-
+  const vendor = await Vendor.findOne({
+      userId:req.user.userId,
+    });
+    if(!vendor){
+      return res.status(404).json({message:"vendor not found"})
+    }
   const order = await Order.findOne({
     _id: req.params.id,
-    vendorId: req.user.userId,
+      vendorId: vendor._id,
   });
 
   if (!order) {
@@ -74,4 +107,61 @@ exports.updateOrderStatus = async (req, res) => {
   );
 
   res.json(order);
+};
+
+exports.cancelOrder = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.orderId);
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    
+    if (["PICKED_UP", "DELIVERED"].includes(order.status)) {
+      return res.status(400).json({
+        message: "Order cannot be cancelled now",
+      });
+    }
+
+    order.status = "CANCELLED";
+    await order.save();
+
+    res.json({ message: "Order cancelled successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Cancel failed" });
+  }
+};
+
+exports.rateOrder = async (req, res) => {
+  try {
+    console.log("RATE BODY:", req.body);
+    const { value, review } = req.body;
+
+    const order = await Order.findById(req.params.orderId);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+    if (order.status !== "DELIVERED") {
+      return res.status(400).json({
+        message: "You can rate only delivered orders",
+      });
+    }
+     if (order.rating && order.rating.value) {
+      return res.status(400).json({
+        message: "Order already rated",
+      });
+    }
+
+    order.rating = { 
+      value: Number(value), 
+      review: review || ""
+     };
+    await order.save();
+    console.log("SAVED RATING:", order.rating);
+      const updatedOrder = await Order.findById(order._id);
+    res.json(updatedOrder );
+  } catch (err) {
+    res.status(500).json({ message: "Rating failed" });
+  }
 };

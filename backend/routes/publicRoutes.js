@@ -1,7 +1,9 @@
 const router = require("express").Router();
-const { getRestaurants, getVendorMenu } = require("../controllers/publicController");
+const { getRestaurants, 
+    getVendorMenu,getRestaurantById } = require("../controllers/publicController");
 
 router.get("/restaurants",getRestaurants);
-router.get("/menu/:vendorUserId",getVendorMenu);
+router.get("/restaurants/:id", getRestaurantById);
+router.get("/menu/:vendorId",getVendorMenu);
 
 module.exports = router;

@@ -10,7 +10,7 @@ exports.addTimelineEvent = async (order, status, message) => {
   await order.save();
 
   const io = getIO();
-
+  console.log("📡 Emitting update for:", order._id);
   io.to(`order:${order._id}`).emit("orderTimelineUpdate", {
     orderId: order._id,
     status,

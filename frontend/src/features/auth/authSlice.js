@@ -2,6 +2,14 @@ import { createSlice } from "@reduxjs/toolkit";
 
 const userFromStorage = localStorage.getItem("user");
 
+let parsedUser = null;
+try{
+  parsedUser = userFromStorage 
+  ? JSON.parse(userFromStorage)
+  : null;
+}catch(err){
+  parsedUser = null;
+}
 const initialState = {
   user: userFromStorage ? JSON.parse(userFromStorage) : null,
   token: localStorage.getItem("token") || null,

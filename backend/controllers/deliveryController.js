@@ -101,13 +101,14 @@ exports.updateDeliveryStatus = async (req, res) => {
         message: "Order not found",
       });
     }
-
+    console.log("Current Order Status:", order.status);
+console.log("Requested Status:", status);
     if (!canTransition(order.status, status)) {
       return res.status(400).json({
         message: `Invalid transition from ${order.status} to ${status}`,
       });
     }
-    order.deliveryStatus = status;
+    order.status = status;
 
     if (status === "PICKED_UP") {
       order.status = "PICKED_UP";
@@ -123,6 +124,7 @@ exports.updateDeliveryStatus = async (req, res) => {
         ? "Order picked up by delivery partner"
         : "Order delivered successfully",
     );
+    await order.save();
 
     const io = getIO();
 

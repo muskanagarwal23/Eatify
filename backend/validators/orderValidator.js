@@ -6,7 +6,7 @@ exports.placeOrderSchema = Joi.object({
 
 exports.updateOrderStatusSchema = Joi.object({
   status: Joi.string()
-    .valid("ACCEPTED", "REJECTED", "PREPARING")
+    .valid("ACCEPTED", "REJECTED", "PREPARING","DELIVERY_ASSIGNED" )
     .required()
 });
 

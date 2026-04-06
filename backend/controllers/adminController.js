@@ -33,6 +33,15 @@ exports.approveVendor = async (req, res) => {
     vendor.isApproved = true;
     await vendor.save();
 
+    const existing = await vendor.findOne({vendorId: vendor.vendorId});
+    if (!existingVendor) {
+    await Vendor.create({
+      vendorId: vendor.vendorId,
+      restaurantName: user.name, // default
+      address: {},
+    });
+  }
+
     res.json({ message: "Vendor approved" });
   } catch (error) {
     console.error("Vendor approval error:", error);
@@ -86,9 +95,9 @@ exports.assignDeliveryPartner = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    if (order.status !== "ACCEPTED" || "PREPARING") {
+    if (order.status !== "PREPARING") {
       return res.status(400).json({
-        message: "Order must be accepted before assignment",
+        message: "Order must be at preparing before assignment",
       });
     }
 
@@ -104,8 +113,9 @@ exports.assignDeliveryPartner = async (req, res) => {
     }
 
     order.deliveryPartnerId = deliveryPartnerId;
-    order.deliveryStatus = "ASSIGNED";
-
+    order.status = "DELIVERY_ASSIGNED";
+    await order.save();
+    console.log("After assignment:", order.status);
     await addTimelineEvent(
       order,
       "DELIVERY_ASSIGNED",

@@ -10,6 +10,8 @@ exports.initSocket = (server) => {
     }
   });
 
+  global.io = io;
+
   // 🔐 Authenticate socket using JWT
   io.use((socket, next) => {
     try {

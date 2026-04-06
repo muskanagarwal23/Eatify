@@ -48,14 +48,26 @@ exports.razorpayWebhook = async (req, res) => {
 
       order.payment.status = "PAID";
       order.status = "PAID";
-      
-      console.log("ADDING TIMELINE EVENT");
-      
+
+      //console.log("ADDING TIMELINE EVENT");
+
       await addTimelineEvent(order, "PAID", "Payment confirmed successfully");
 
-      console.log("UPDATED ORDER:", order._id);
-    }
+      //console.log("UPDATED ORDER:", order._id);
+      await order.save();
 
+       const { getIO } = require("../socket");
+    const io = getIO();
+
+    console.log("📡 Emitting update for:", order._id);
+
+    io.to(`order:${order._id}`).emit("orderStatusUpdated", {
+      timeline: order.timeline,
+    });
+    }
+    
+
+   
     res.status(200).json({ status: "ok" });
   } catch (error) {
     console.error("WEBHOOK ERROR:", error);

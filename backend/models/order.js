@@ -29,9 +29,12 @@ const OrderSchema = new mongoose.Schema(
       type: String,
       enum: [
         "PLACED",
+        "PAID",
         "ACCEPTED",
         "REJECTED",
         "PREPARING",
+        "DELIVERY_ASSIGNED",
+        "PICKED_UP",
         "OUT_FOR_DELIVERY",
         "DELIVERED",
         "CANCELLED",
@@ -41,11 +44,6 @@ const OrderSchema = new mongoose.Schema(
     deliveryPartnerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-    },
-    deliveryStatus: {
-      type: String,
-      enum: ["PENDING", "ASSIGNED", "PICKED_UP", "DELIVERED"],
-      default: "PENDING",
     },
     payment: {
       razorpayOrderId: String,
@@ -57,18 +55,22 @@ const OrderSchema = new mongoose.Schema(
         default: "PENDING",
       },
     },
+    rating: {
+      value: { type: Number, default: null },
+      review: { type: String, default: "" },
+    },
     timeline: [
-  {
-    status: String,
-    message: String,
-    timestamp: {
-      type: Date,
-      default: Date.now
-    }
-  }
-]
+      {
+        status: String,
+        message: String,
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("Order", OrderSchema);
