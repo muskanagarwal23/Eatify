@@ -1,7 +1,7 @@
 const router = require("express").Router();
 const {auth,allowRoles} = require("../middleware/authmiddleware");
 const {vendorApprovedOnly} = require("../middleware/vendorApproval");
-const {createOrUpdateProfile, getMyProfile} = require("../controllers/vendorController");
+const {createOrUpdateProfile, getMyProfile, getVendorReviews, replyToReview} = require("../controllers/vendorController");
 const vendor = require("../models/vendor");
 const upload = require("../middleware/uploadMiddleware")
 
@@ -21,5 +21,6 @@ router.post("/profile",
     createOrUpdateProfile);
 
 router.get("/profile",auth,allowRoles("VENDOR"), vendorApprovedOnly,getMyProfile);
+
 
 module.exports = router;

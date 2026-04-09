@@ -1,53 +1,113 @@
 const User = require("../models/user");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const Delivery = require("../models/deliveryProfile");
+const Vendor = require("../models/vendor");
+const cloudinary = require("../config/cloudinary");
 
 exports.register = async (req, res) => {
-  const { name, 
-    email, 
-    password, 
-    role,
-  licenseNumber } = req.body;
+  try {
+    const {
+      name,
+      email,
+      password,
+      role,
+      licenseNumber,
+      vehicleNumber,
+    } = req.body;
 
-  if (role === "ADMIN") {
-    return res.status(403).json({ message: "admin not allowed" });
+    if (role === "ADMIN") {
+      return res.status(403).json({ message: "admin not allowed" });
+    }
+
+    const exists = await User.findOne({ email });
+    if (exists) {
+      return res.status(409).json({ message: "User already exists" });
+    }
+
+    // 🔥 VALIDATION BEFORE USER CREATION
+    if ((role === "DELIVERY" || role === "VENDOR") && !req.file) {
+      return res.status(400).json({
+        message: "Document is required",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      role,
+      isActive: role === "CUSTOMER",
+    });
+
+    // ================= DELIVERY =================
+    if (role === "DELIVERY") {
+      const uploadResult = await new Promise((resolve, reject) => {
+        cloudinary.uploader
+          .upload_stream(
+            {
+              folder: "eatify/delivery-licenses",
+              resource_type: "raw",
+            },
+            (error, result) => {
+              if (error) return reject(error);
+              resolve(result);
+            }
+          )
+          .end(req.file.buffer);
+      });
+
+      await Delivery.create({
+        userId: user._id,
+        licenseNumber,
+        vehicleNumber,
+        licenseDocument: {
+          url: uploadResult.secure_url,
+          publicId: uploadResult.public_id,
+        },
+      });
+    }
+
+    // ================= VENDOR =================
+    if (role === "VENDOR") {
+      const uploadResult = await new Promise((resolve, reject) => {
+        cloudinary.uploader
+          .upload_stream(
+            {
+              folder: "eatify/vendor-licenses",
+              resource_type: "raw",
+            },
+            (error, result) => {
+              if (error) return reject(error);
+              resolve(result);
+            }
+          )
+          .end(req.file.buffer);
+      });
+
+      await Vendor.create({
+        userId: user._id,
+        licenseNumber,
+        licenseDocument: {
+          url: uploadResult.secure_url,
+          publicId: uploadResult.public_id,
+        },
+      });
+    }
+
+    res.json({
+      message:
+        role === "DELIVERY" || role === "VENDOR"
+          ? "Registered. Wait for admin approval"
+          : "Registered Successfully",
+    });
+
+  } catch (err) {
+    console.error("REGISTER ERROR:", err);
+    res.status(500).json({ message: "Registration failed" });
   }
-
-  const exists = await User.findOne({ email });
-  if (exists) {
-    return res.status(409).json({ message: "User already exists" });
-  }
-
-  const hashedPassword = await bcrypt.hash(password, 10);
-  console.log("FILE:",req.file);
-  
-  await User.create({
-    name,
-    email,
-    password: hashedPassword,
-    role,
-    licenseNumber,
-    documentUrl:req.file?.originalname  || null,
-    isApproved: role === "VENDOR" ? false : true
-  });
-
-  if (role === "VENDOR" && !req.file) {
-  return res.status(400).json({
-    message: "Document is required for vendor"
-  });
-}
-
-  res.json({
-  message: 
-  role === "VENDOR"
-  ? "Registered. Wait for admin approval"
-  : "Registered Successfully",
-  user: {
-    name,
-    email,
-    role,
-  },
-});
 };
 
 exports.login = async (req, res) => {

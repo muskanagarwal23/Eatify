@@ -76,7 +76,7 @@ exports.verifyPayment = async (req, res, next) => {
     order.payment.razorpayPaymentId = razorpay_payment_id;
     order.payment.razorpaySignature = razorpay_signature;
     order.payment.status = "PAID";
-    order.status = "PREPARING";
+   
 
     await order.save();
 

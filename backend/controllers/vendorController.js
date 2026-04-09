@@ -1,6 +1,7 @@
 const Vendor = require("../models/vendor");
 const Menu = require("../models/menu");
 const mongoose = require("mongoose");
+const Review = require("../models/review");
 
 exports.registerVendor = async (req, res) => {
   try {
@@ -115,3 +116,4 @@ exports.getMyProfile = async (req, res) => {
     });
   }
 };
+

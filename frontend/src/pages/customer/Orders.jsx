@@ -1,10 +1,6 @@
 // Orders.jsx
 import { useEffect, useState } from "react";
-import {
-  getMyOrders,
-  cancelOrder,
-  submitRatings,
-} from "../../features/orders/orderAPI";
+import { getMyOrders, cancelOrder } from "../../features/orders/orderAPI";
 import { useNavigate } from "react-router-dom";
 import { getSocket } from "../../sockets/socket";
 import {
@@ -22,6 +18,7 @@ import {
   FaFilter,
 } from "react-icons/fa";
 import toast from "react-hot-toast";
+import { createReviews } from "../../features/review/reviewAPI";
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
@@ -71,7 +68,24 @@ const Orders = () => {
       );
     });
 
-    return () => socket.off("orderTimelineUpdate");
+    socket.on("reviewReply", (data) => {
+      toast.success("Vendor replied to your review!");
+      setOrders(prev => 
+        prev.map(order => 
+          order._id === data.orderId 
+          ? {
+            ...order,
+            review: {
+              ...order.review,
+              reply:data.reply
+            }
+          }
+          :order
+        )
+      );
+    });
+
+    return () => socket.off("orderTimelineUpdate", "reviewReply");
   }, []);
 
   // Filters
@@ -95,6 +109,8 @@ const Orders = () => {
         return "bg-purple-100 text-purple-700";
       case "PREPARING":
         return "bg-orange-100 text-orange-700";
+      case "READY":  
+        return "bg-brown-100 text-brown-700";
       case "ACCEPTED":
         return "bg-yellow-100 text-yellow-700";
       case "PLACED":
@@ -115,6 +131,9 @@ const Orders = () => {
         return <FaMotorcycle className="text-purple-600" />;
       case "PREPARING":
         return <FaUtensils className="text-orange-600" />;
+      case "READY":  
+        return <FaUtensils className="text-orange-600" />;
+
       case "CANCELLED":
         return <FaHourglassHalf className="text-red-600" />;
       default:
@@ -142,25 +161,26 @@ const Orders = () => {
 
   const handleSubmitRating = async () => {
     try {
-      console.log("SENDING:", ratingData);
-      const res = await submitRatings(ratingData.orderId, {
-        value: ratingData.value,
+      const res = await createReviews({
+        orderId: ratingData.orderId,
+        rating: ratingData.value,
         review: ratingData.review,
       });
 
       setOrders((prev) =>
         prev.map((order) =>
           order._id === ratingData.orderId
-            ? { ...order, rating: res.data.rating }
+            ? { ...order, review: res.data } // ✅ FIXED
             : order,
         ),
       );
 
       setRatingData({ orderId: null, value: 0, review: "" });
-      setTimeout(() => fetchOrders(), 500);
-      toast.success("Thanks for your feedback! ");
+
+      toast.success("Thanks for your feedback!");
     } catch (err) {
       console.log(err);
+      toast.error(err.response?.data?.message || "Failed");
     }
   };
 
@@ -342,8 +362,7 @@ const Orders = () => {
 
         {/* Orders List */}
         {filteredOrders.length === 0 ? (
-          <div className="bg-white shadow-lg rounded-xl p-5 flex gap-5 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
-          >
+          <div className="bg-white shadow-lg rounded-xl p-5 flex gap-5 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
             <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <FaShoppingBag className="w-12 h-12 text-gray-400" />
             </div>
@@ -364,196 +383,233 @@ const Orders = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {filteredOrders.map((order) => (
-              <div
-                key={order._id}
-                onClick={() => navigate(`/order/${order._id}`)} 
-                className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all overflow-hidden"
-              >
-                <div className="p-4 md:p-5">
-                  <div className="flex flex-col md:flex-row gap-4">
-                    {/* Image */}
-                    <div className="flex-shrink-0">
-                      <img
-                        src={
-                          order.items[0]?.menuItem?.image?.img_url ||
-                          order.items[0]?.menuItem?.imageUrl ||
-                          order.items[0]?.image ||
-                          "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&h=100&fit=crop"
-                        }
-                        className="w-20 h-20 md:w-24 md:h-24 rounded-lg object-cover"
-                        alt=""
-                      />
-                    </div>
+            {filteredOrders.map((order) => {
+              // console.log("ORDER DEBUG:", {
+              //   id: order._id,
+              //   status: order.status,
+              //   review: order.review,
+              // });
 
-                    {/* Details */}
-                    <div className="flex-1">
-                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                        <div>
-                          <h3 className="font-bold text-lg text-gray-800">
-                            {order.vendorId?.name || "Restaurant"}
-                          </h3>
-                          <p className="text-sm text-gray-500 mt-1">
-                            {getOrderSummary(order)}
-                          </p>
-                        </div>
-                        <div
-                          className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium w-fit ${getStatusColor(order.status)}`}
-                        >
-                          {getStatusIcon(order.status)}
-                          <span>{order.status}</span>
-                        </div>
+              return (
+                <div
+                  key={order._id}
+                  className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all overflow-hidden"
+                >
+                  <button onClick={() => navigate(`/order/${order._id}`)}>
+                    View Details
+                  </button>
+                  <div className="p-4 md:p-5">
+                    <div className="flex flex-col md:flex-row gap-4">
+                      {/* Image */}
+                      <div className="flex-shrink-0">
+                        <img
+                          src={
+                            order.items[0]?.menuItem?.image?.img_url ||
+                            order.items[0]?.menuItem?.imageUrl ||
+                            order.items[0]?.image ||
+                            "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&h=100&fit=crop"
+                          }
+                          className="w-20 h-20 md:w-24 md:h-24 rounded-lg object-cover"
+                          alt=""
+                        />
                       </div>
 
-                      <div className="flex flex-wrap gap-3 mt-3 text-sm text-gray-500">
-                        <span>
-                          📅 {new Date(order.createdAt).toLocaleDateString()}
-                        </span>
-                        <span>
-                          ⏰{" "}
-                          {new Date(order.createdAt).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                        <span className="font-semibold text-gray-800">
-                          💰 ₹{order.totalAmount}
-                        </span>
-                      </div>
+                      {/* Details */}
+                      <div className="flex-1">
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                          <div>
+                            <h3 className="font-bold text-lg text-gray-800">
+                              {order.vendorId?.name || "Restaurant"}
+                            </h3>
+                            <p className="text-sm text-gray-500 mt-1">
+                              {getOrderSummary(order)}
+                            </p>
+                          </div>
+                          <div
+                            className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium w-fit ${getStatusColor(order.status)}`}
+                          >
+                            {getStatusIcon(order.status)}
 
-                      {order.deliveryPartnerId && (
-                        <div className="mt-2 p-2 bg-gray-50 rounded-lg">
-                          <p className="text-sm text-gray-600 flex items-center gap-2">
-                            <FaTruck className="text-green-500" />
-                            Delivery by:{" "}
-                            <span className="font-medium">
-                              {order.deliveryPartnerId.name}
-                            </span>
-                            {order.deliveryPartnerId.phone && (
-                              <span className="text-gray-500">
-                                | 📞 {order.deliveryPartnerId.phone}
+                            <span>{order.status}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-3 mt-3 text-sm text-gray-500">
+                          <span>
+                            📅 {new Date(order.createdAt).toLocaleDateString()}
+                          </span>
+                          <span>
+                            ⏰{" "}
+                            {new Date(order.createdAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                          <span className="font-semibold text-gray-800">
+                            💰 ₹{order.totalAmount}
+                          </span>
+                        </div>
+
+                        {order.deliveryPartnerId && (
+                          <div className="mt-2 p-2 bg-gray-50 rounded-lg">
+                            <p className="text-sm text-gray-600 flex items-center gap-2">
+                              <FaTruck className="text-green-500" />
+                              Delivery by:{" "}
+                              <span className="font-medium">
+                                {order.deliveryPartnerId.name}
+                              </span>
+                              {order.deliveryPartnerId.phone && (
+                                <span className="text-gray-500">
+                                  | 📞 {order.deliveryPartnerId.phone}
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Rating Section */}
+                        {order.status?.toUpperCase() === "DELIVERED" &&
+                          !(
+                            order.review &&
+                            order.review.rating &&
+                            order.review.rating.value
+                          ) && (
+                            <div className="mt-4 pt-3 border-t border-gray-100">
+                              <p className="text-sm font-medium text-gray-700 mb-2">
+                                Rate your order:
+                              </p>
+                              <div className="flex gap-1 mb-2">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <button
+                                    key={star}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setRatingData({
+                                        orderId: order._id,
+                                        value: star,
+                                        review:
+                                          ratingData.orderId === order._id
+                                            ? ratingData.review
+                                            : "",
+                                      });
+                                    }}
+                                    className="text-2xl focus:outline-none"
+                                  >
+                                    <FaStar
+                                      className={`${
+                                        ratingData.orderId === order._id &&
+                                        ratingData.value >= star
+                                          ? "text-yellow-400"
+                                          : "text-gray-300"
+                                      } hover:text-yellow-400 transition-colors`}
+                                    />
+                                  </button>
+                                ))}
+                              </div>
+
+                              {ratingData.orderId === order._id &&
+                                ratingData.value > 0 && (
+                                  <div className="space-y-2 mt-2">
+                                    <textarea
+                                      placeholder="Write your feedback (optional)..."
+                                      className="w-full border border-gray-200 rounded-lg p-2 text-sm focus:border-red-400 focus:outline-none"
+                                      rows="2"
+                                      value={ratingData.review}
+                                      onChange={(e) =>
+                                        setRatingData({
+                                          ...ratingData,
+                                          review: e.target.value,
+                                        })
+                                      }
+                                    />
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSubmitRating();
+                                      }}
+                                      className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg text-sm font-medium hover:shadow-lg transition-all"
+                                    >
+                                      Submit Rating
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        navigate(
+                                          `/reviews/${order.vendorId?._id}`,
+                                        )
+                                      }
+                                      className="text-sm text-red-500 mt-2"
+                                    >
+                                      View All Reviews
+                                    </button>
+                                  </div>
+                                )}
+                            </div>
+                          )}
+
+                        {order.review?.rating?.value && (
+                          <div className="mt-3 flex items-center gap-2">
+                            <div className="flex gap-1">
+                              {renderStars(order.review.rating.value)}
+                            </div>
+                            {order.review.rating.review && (
+                              <span className="text-xs text-gray-500">
+                                "{order.review.rating.review}"
                               </span>
                             )}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Rating Section */}
-                      {order.status === "DELIVERED" && !order.rating && (
-                        <div className="mt-4 pt-3 border-t border-gray-100">
-                          <p className="text-sm font-medium text-gray-700 mb-2">
-                            Rate your order:
-                          </p>
-                          <div className="flex gap-1 mb-2">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <button
-                                key={star}
-                                onClick={() =>
-                                  setRatingData({
-                                    orderId: order._id,
-                                    value: star,
-                                    review:
-                                      ratingData.orderId === order._id
-                                        ? ratingData.review
-                                        : "",
-                                  })
-                                }
-                                className="text-2xl focus:outline-none"
-                              >
-                                <FaStar
-                                  className={`${
-                                    ratingData.orderId === order._id &&
-                                    ratingData.value >= star
-                                      ? "text-yellow-400"
-                                      : "text-gray-300"
-                                  } hover:text-yellow-400 transition-colors`}
-                                />
-                              </button>
-                            ))}
                           </div>
-
-                          {ratingData.orderId === order._id &&
-                            ratingData.value > 0 && (
-                              <div className="space-y-2 mt-2">
-                                <textarea
-                                  placeholder="Write your feedback (optional)..."
-                                  className="w-full border border-gray-200 rounded-lg p-2 text-sm focus:border-red-400 focus:outline-none"
-                                  rows="2"
-                                  value={ratingData.review}
-                                  onChange={(e) =>
-                                    setRatingData({
-                                      ...ratingData,
-                                      review: e.target.value,
-                                    })
-                                  }
-                                />
-                                <button
-                                  onClick={handleSubmitRating}
-                                  className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg text-sm font-medium hover:shadow-lg transition-all"
-                                >
-                                  Submit Rating
-                                </button>
-                              </div>
-                            )}
-                        </div>
-                      )}
-
-                      {order.rating?.value && (
-                        <div className="mt-3 flex items-center gap-2">
-                          <div className="flex gap-1">
-                            {renderStars(order.rating.value)}
+                        )}
+                        {order.review?.reply && (
+                          <div className="mt-2 bg-green-50 p-2 rounded text-sm">
+                            <span className="font-medium text-green-700">
+                              Vendor Reply:
+                            </span>{" "}
+                            {order.review.reply}
                           </div>
-                          {order.rating.review && (
-                            <span className="text-xs text-gray-500">
-                              "{order.rating.review}"
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
 
-                    {/* Actions */}
-                    <div className="flex flex-row md:flex-col gap-2 justify-end md:justify-start">
-                      <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                          localStorage.setItem("orderId", order._id);
-                          navigate("/track");
-                        }}
-                        className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg text-sm font-medium hover:shadow-lg transition-all"
-                      >
-                        Track
-                      </button>
-
-                      <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleReorder(order)}
-                        }
-                            
-                        className="px-4 py-2 border-2 border-red-500 text-red-500 rounded-lg text-sm font-medium hover:bg-red-50 transition-all flex items-center gap-1 justify-center"
-                      >
-                        <FaRedo /> Reorder
-                      </button>
-
-                      {!["PICKED_UP", "DELIVERED", "CANCELLED"].includes(
-                        order.status,
-                      ) && (
+                      {/* Actions */}
+                      <div className="flex flex-row md:flex-col gap-2 justify-end md:justify-start">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleCancel(order._id)}
-                          }
-                          className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all"
+                            localStorage.setItem("orderId", order._id);
+                            navigate("/track");
+                          }}
+                          className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg text-sm font-medium hover:shadow-lg transition-all"
                         >
-                          Cancel
+                          Track
                         </button>
-                      )}
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleReorder(order);
+                          }}
+                          className="px-4 py-2 border-2 border-red-500 text-red-500 rounded-lg text-sm font-medium hover:bg-red-50 transition-all flex items-center gap-1 justify-center"
+                        >
+                          <FaRedo /> Reorder
+                        </button>
+
+                        {!["PICKED_UP", "DELIVERED", "CANCELLED"].includes(
+                          order.status,
+                        ) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCancel(order._id);
+                            }}
+                            className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

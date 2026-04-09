@@ -9,7 +9,7 @@ const {placeOrder,
 const {validate} = require("../middleware/validate");
 const {placeOrderSchema, updateOrderStatusSchema} = require("../validators/orderValidator");
 
-    router.post("/",auth,allowRoles("CUSTOMER"), validate(placeOrderSchema),placeOrder);
+    router.post("/",auth,allowRoles("CUSTOMER"),placeOrder);
 
     router.get("/my_orders", auth, allowRoles("CUSTOMER"), getMyOrders);
 
@@ -17,7 +17,7 @@ const {placeOrderSchema, updateOrderStatusSchema} = require("../validators/order
 
     router.put("/:orderId/cancel",auth,allowRoles("CUSTOMER"),cancelOrder);
     
-     router.put("/:orderId/rate",auth,allowRoles("CUSTOMER"),rateOrder);
+  
 
     router.patch("/:id/status", auth,
         allowRoles("VENDOR"), 

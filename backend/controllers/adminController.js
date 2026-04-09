@@ -65,10 +65,14 @@ exports.getPendingDeliveryPartners = async (req, res) => {
 
 exports.approveDeliveryPartner = async (req, res) => {
   try {
-    const delivery = await Delivery.findById(req.params.id);
-
+    const delivery = await Delivery.findOne({
+      userId: req.params.id
+  });
+    
+    
     if (!delivery) {
-      return res.status(404).json({ message: "Delivery partner not found" });
+      return res.status(404).json({ 
+        message: "Delivery partner not found" });
     }
 
     delivery.isApproved = true;
@@ -85,52 +89,52 @@ exports.approveDeliveryPartner = async (req, res) => {
   }
 };
 
-exports.assignDeliveryPartner = async (req, res) => {
-  try {
-    const { deliveryPartnerId } = req.body;
+// exports.assignDeliveryPartner = async (req, res) => {
+//   try {
+//     const { deliveryPartnerId } = req.body;
 
-    const order = await Order.findById(req.params.orderId);
+//     const order = await Order.findById(req.params.orderId);
 
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
+//     if (!order) {
+//       return res.status(404).json({ message: "Order not found" });
+//     }
 
-    if (order.status !== "PREPARING") {
-      return res.status(400).json({
-        message: "Order must be at preparing before assignment",
-      });
-    }
+//     if (order.status !== "PREPARING") {
+//       return res.status(400).json({
+//         message: "Order must be at preparing before assignment",
+//       });
+//     }
 
-    const delivery = await Delivery.findOne({
-      userId: deliveryPartnerId,
-      isApproved: true,
-    });
+//     const delivery = await Delivery.findOne({
+//       userId: deliveryPartnerId,
+//       isApproved: true,
+//     });
 
-    if (!delivery) {
-      return res.status(404).json({
-        message: "Delivery partner not approved or not found",
-      });
-    }
+//     if (!delivery) {
+//       return res.status(404).json({
+//         message: "Delivery partner not approved or not found",
+//       });
+//     }
 
-    order.deliveryPartnerId = deliveryPartnerId;
-    order.status = "DELIVERY_ASSIGNED";
-    await order.save();
-    console.log("After assignment:", order.status);
-    await addTimelineEvent(
-      order,
-      "DELIVERY_ASSIGNED",
-      "Delivery partner assigned"
-    );
+//     order.deliveryPartnerId = deliveryPartnerId;
+//     order.status = "DELIVERY_ASSIGNED";
+//     await order.save();
+//     console.log("After assignment:", order.status);
+//     await addTimelineEvent(
+//       order,
+//       "DELIVERY_ASSIGNED",
+//       "Delivery partner assigned"
+//     );
 
-    const io = getIO();
+//     const io = getIO();
 
-    io.to(`user:${deliveryPartnerId}`).emit("deliveryAssigned", {
-      orderId: order._id,
-    });
+//     io.to(`user:${deliveryPartnerId}`).emit("deliveryAssigned", {
+//       orderId: order._id,
+//     });
 
-    res.json({ message: "Delivery partner assigned" });
-  } catch (error) {
-    console.error("Delivery assignment error:", error);
-    res.status(500).json({ message: "Failed to assign delivery partner" });
-  }
-};
+//     res.json({ message: "Delivery partner assigned" });
+//   } catch (error) {
+//     console.error("Delivery assignment error:", error);
+//     res.status(500).json({ message: "Failed to assign delivery partner" });
+//   }
+// };

@@ -30,6 +30,8 @@ const Checkout = () => {
   });
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  
+
 
   useEffect(() => {
     const fetchCart = async () => {
@@ -42,25 +44,29 @@ const Checkout = () => {
         }
       } catch (err) {
         console.log(err.response?.data);
+        toast.error(err.response?.data?.message || "Order failed")
       }
     };
-
+   
     fetchCart();
   }, []);
 
   const handlePayment = async () => {
     if (loading) return;
-    if (!address.street) {
+    console.log("sending address..", address);
+    
+    if (!address.street || !address.city || !address.zipCode) {
       toast.error("Please select address");
       return;
     }
 
     setLoading(true);
     try {
+      const formattedAddress = `${address.street}, ${address.city}, ${address.zipCode}, Phone: ${address.phone}`;
       // 1️⃣ Create DB Order
-      const { data: order } = await createOrder({ address });
+      const { data: order } = await createOrder({ address: formattedAddress });
       console.log("Order created:", order);
-
+      
       // 2️⃣ Create Razorpay Order
       const { data } = await createPaymentOrder(order._id);
 
@@ -103,20 +109,21 @@ const Checkout = () => {
   };
 
   const handleSaveAddress = () => {
-    if (!address.street || !address.city || !address.phone) {
-      alert("Please fill all fields");
-      return;
-    }
+  if (!address.street || !address.city || !address.phone) {
+    toast.error("Please fill all fields");
+    return;
+  }
 
-    const updated = [...savedAddresses, address];
+  const newAddress = { ...address }; // ✅ ensure full object
 
-    setSavedAddresses(updated);
-    setAddress(address);
-    localStorage.setItem("addresses", JSON.stringify(updated));
+  const updated = [...savedAddresses, newAddress];
 
-    setShowForm(false);
-    setAddress({ street: "", city: "", zipCode: "", phone: "" });
-  };
+  setSavedAddresses(updated);
+  localStorage.setItem("addresses", JSON.stringify(updated));
+
+  setShowForm(false);
+  setAddress({ street: "", city: "", zipCode: "", phone: "" });
+};
 
   if (!cart) {
     return (

@@ -33,6 +33,7 @@ const OrderSchema = new mongoose.Schema(
         "ACCEPTED",
         "REJECTED",
         "PREPARING",
+        "READY",
         "DELIVERY_ASSIGNED",
         "PICKED_UP",
         "OUT_FOR_DELIVERY",
@@ -59,6 +60,14 @@ const OrderSchema = new mongoose.Schema(
       value: { type: Number, default: null },
       review: { type: String, default: "" },
     },
+    deliveryFee :{
+      type:Number,
+      default:40
+    },
+    deliveryAddress: {
+  type: String,
+  required: true
+},
     timeline: [
       {
         status: String,

@@ -12,7 +12,7 @@ exports.razorpayWebhook = async (req, res) => {
 
     const expectedSignature = crypto
       .createHmac("sha256", secret)
-      .update(req.body)
+      .update(JSON.stringify(req.body))
       .digest("hex");
 
     if (expectedSignature !== signature) {
@@ -48,6 +48,7 @@ exports.razorpayWebhook = async (req, res) => {
 
       order.payment.status = "PAID";
       order.status = "PAID";
+      console.log("CURRENT ORDER STATUS:", order.status);
 
       //console.log("ADDING TIMELINE EVENT");
 

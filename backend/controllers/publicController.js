@@ -1,6 +1,7 @@
 const User = require("../models/user");
 const Vendor = require("../models/vendor");
 const Menu = require("../models/menu");
+const Review = require("../models/review");
 
 exports.getRestaurants = async (req, res) => {
   try {
@@ -64,3 +65,4 @@ exports.getRestaurantById = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+

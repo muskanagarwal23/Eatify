@@ -54,6 +54,7 @@ const VendorDashboard = () => {
   const [vendorData, setVendorData] = useState(null);
   const [ordersData, setOrdersData] = useState([]);
   const [growthOrders, setGrowthOrders] = useState(0);
+  const [hasFetched, setHasFetched] = useState(false);
 
   const [stats, setStats] = useState({
     totalOrders: 0,
@@ -69,7 +70,7 @@ const VendorDashboard = () => {
  
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || hasFetched) return;
     
     //console.log("VENDOR DATA:", vendorData);
     if (user.role !== "VENDOR") {
@@ -89,8 +90,10 @@ const VendorDashboard = () => {
         const profile = profileRes.data;
         const orders = ordersRes.data;
 
-        setOrders(orders);
+        setOrders(orders || []);
         setVendorData(profile);
+
+        setHasFetched(true);
 
         // ===== STATS =====
         const totalOrders = orders.length;
@@ -190,7 +193,7 @@ const VendorDashboard = () => {
     };
     console.log("FINAL DATA:", vendorData);
     fetchData();
-  }, [user?.role]);
+  }, [user]);
 
    useEffect(() => {
   const socket = getSocket();
@@ -660,6 +663,8 @@ const VendorDashboard = () => {
                               ? "bg-green-100 text-green-700"
                               : order.status === "CANCELLED"
                                 ? "bg-red-100 text-red-700"
+                                : order.status === "READY"
+                                  ? "bg-brown-100 text-brown-700"
                                 : order.status === "PREPARING"
                                   ? "bg-orange-100 text-orange-700"
                                   : "bg-blue-100 text-blue-700"

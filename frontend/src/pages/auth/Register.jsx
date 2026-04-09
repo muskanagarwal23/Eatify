@@ -12,6 +12,7 @@ const Register = () => {
     email: "",
     password: "",
     licenseNumber: "",
+    vehicleNumber: "",
   });
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -40,8 +41,13 @@ const Register = () => {
       return "All basic fields are required";
     }
 
-    if (role === "VENDOR") {
+    if (role === "VENDOR"  ) {
       if (!form.licenseNumber) return "License Number required";
+      if (!file) return "Documents required";
+    }
+    if (role === "DELIVERY"  ) {
+      if (!form.licenseNumber) return "License Number required";
+      if (!form.vehicleNumber) return "Vehicle Number required";
       if (!file) return "Documents required";
     }
     return null;
@@ -49,6 +55,7 @@ const Register = () => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    setError("");
 
     const err = validate();
     if (err) return setError(err);
@@ -65,14 +72,15 @@ const Register = () => {
         formData.append("licenseNumber", form.licenseNumber);
         formData.append("document", file);
       }
+      if (role === "DELIVERY") {
+        formData.append("licenseNumber", form.licenseNumber);
+        formData.append("vehicleNumber", form.vehicleNumber);
+        formData.append("document", file);
+      }
 
       await registerUser(formData);
       setIsRegistered(true);
-      // toast.success(
-      //   role === "VENDOR"
-      //     ? "Registered! Waiting for approval"
-      //     : "Registered Successfully",
-      // );
+      
     } catch (err) {
       console.log("Full error:", err);
       console.log("RESPONSE:", err.response);
@@ -82,7 +90,7 @@ const Register = () => {
     }
   };
 
-  if (isRegistered && role === "VENDOR") {
+  if (isRegistered && role === "VENDOR" || isRegistered && role === "DELIVERY") {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-10 rounded-xl shadow-lg text-center max-w-md">
@@ -92,7 +100,7 @@ const Register = () => {
         </h1>
 
         <p className="text-gray-600 mb-4">
-          Your vendor account has been created.
+          Your {role.toLowerCase()} account has been created.
         </p>
 
         <p className="text-gray-500 text-sm mb-6">
@@ -217,6 +225,58 @@ const Register = () => {
                   </>
                 )}
 
+                {/* DELIVERY FIELDS */}
+                {role === "DELIVERY" && (
+                  <>
+                    <input
+                      name="licenseNumber"
+                      placeholder="License Number"
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-400 transition-all"
+                    />
+                    <input
+                      name="vehicleNumber"
+                      placeholder="Vehicle Number"
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-400 transition-all"
+                    />
+
+                    {/* FILE UPLOAD */}
+                    <input
+                      type="file"
+                      onChange={handleFile}
+                      className="w-full"
+                    />
+
+                    {/* PREVIEW */}
+                    {file && (
+                      <div className="border p-3 rounded bg-gray-50">
+                        {/* File Name */}
+                        <p className="text-sm text-gray-700 mb-2">
+                          📄 {file.name}
+                        </p>
+
+                        {isImage && (
+                          <img
+                            src={preview}
+                            alt="preview"
+                            className="w-full h-40 object-cover rounded mb-2"
+                          />
+                        )}
+
+                        {/* Preview Button */}
+                        <button
+                          type="button"
+                          onClick={() => window.open(preview, "_blank")}
+                          className="text-blue-600 text-sm underline hover:text-blue-800"
+                        >
+                          Preview Document
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+
                 {/* ERROR */}
                 {error && <p className="text-red-500 text-sm">{error}</p>}
 
@@ -235,52 +295,6 @@ const Register = () => {
                 </p>
               </form>
 
-              {/* <div className="space-y-4">
-                <input
-                  type="text"
-                  placeholder="Full Name"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-400 transition-all"
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
-
-                <input
-                  type="email"
-                  placeholder="Email Address"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-400 transition-all"
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                />
-
-                <input
-                  type="password"
-                  placeholder="Password"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-400 transition-all"
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                />
-
-                <select
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-400 transition-all bg-white"
-                  value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value })}
-                >
-                  <option value="CUSTOMER">Customer</option>
-                  <option value="VENDOR">Vendor</option>
-                  <option value="DELIVERY">Delivery Partner</option>
-                </select>
-
-                <button
-                  onClick={handleRegister}
-                  className="w-full py-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg transition-colors"
-                >
-                  REGISTER
-                </button>
-
-                <p className="text-center text-gray-500 text-sm mt-6">
-                  Already have an account?{" "}
-                  <Link to="/login" className="text-red-500 font-semibold hover:underline">
-                    Login
-                  </Link>
-                </p>
-              </div> */}
             </div>
 
             {/* RIGHT SECTION - IMAGE */}

@@ -26,6 +26,7 @@ app.use("/api/orders", require("./routes/orderRoutes"));
 app.use("/api/delivery", require("./routes/deliveryRoutes"));
 app.use("/api/payments", require("./routes/paymentRoutes"));
 app.use("/api/profile", require("./routes/userRoutes"));
+app.use("/api/reviews", require("./routes/reviewRoutes"));
 
 // ✅ ALWAYS LAST
 app.use(errorHandler);

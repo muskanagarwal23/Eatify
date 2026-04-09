@@ -19,6 +19,7 @@ import {
   FaHistory,
   FaSignOutAlt
 } from "react-icons/fa";
+import {getMyOrders} from "../../features/orders/orderAPI";
 
 const Profile = () => {
   const [form, setForm] = useState({
@@ -37,30 +38,60 @@ const Profile = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
+  const [orderCount, setOrderCount] = useState(0);
+  const [isFetched, setIsFetched]= useState(false);
+  
 
-  // Fetch profile
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const { data } = await getProfile();
-        setForm({
-          name: data.name || "",
-          email: data.email || "",
-          phone: data.phone || "",
-          address: {
-            street: data.address?.street || "",
-            city: data.address?.city || "",
-            zipCode: data.address?.zipCode || ""
-          }
-        });
-      } catch (err) {
-        console.log(err);
-        toast.error("Failed to load profile");
-      }
-    };
+    if(isFetched) return ;
+  const fetchProfile = async () => {
+    try {
+      const { data } = await getProfile();
+       
+      if(user){
+      setForm({
+        name: data.name || "",
+        email: data.email || "",
+        phone: data.phone || "",
+        address: {
+          street: data.address?.street || "",
+          city: data.address?.city || "",
+          zipCode: data.address?.zipCode || ""
+        }
+      });
+    }
+      setIsFetched(true);
 
-    fetchProfile();
-  }, []);
+      dispatch(loginSuccess({
+        user: data,
+        token: localStorage.getItem("token"),
+      }));
+
+    } catch (err) {
+      toast.error("Failed to load profile");
+    }
+  };
+
+  const fetchOrders = async () => {
+    try {
+      const res = await getMyOrders();
+
+      const orders = Array.isArray(res.data)
+        ? res.data
+        : res.data.orders || [];
+
+      setOrderCount(orders.length);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  fetchProfile();
+  fetchOrders();
+}, [user,isFetched]);
+
+
+
 
   // Update profile
   const handleUpdate = async () => {
@@ -146,22 +177,16 @@ const Profile = () => {
               <p className="text-gray-400 text-xs mt-1">Member since {new Date().getFullYear()}</p>
 
               {/* Stats */}
-              <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-gray-100">
+              
                 <div className="text-center">
                   <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
                     <FaShoppingBag className="text-red-500" />
                   </div>
-                  <p className="text-lg font-bold text-gray-800">0</p>
+                  <p className="text-lg font-bold text-gray-800">{orderCount}</p>
                   <p className="text-xs text-gray-500">Total Orders</p>
                 </div>
-                <div className="text-center">
-                  <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                    <FaHistory className="text-orange-500" />
-                  </div>
-                  <p className="text-lg font-bold text-gray-800">0</p>
-                  <p className="text-xs text-gray-500">Reviews</p>
-                </div>
-              </div>
+                
+            
             </div>
           </div>
 

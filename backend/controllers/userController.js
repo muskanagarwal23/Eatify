@@ -1,4 +1,5 @@
 const User = require("../models/user");
+const Review = require("../models/review");
 
 exports.getMyProfile = async (req,res) => {
     try{
@@ -16,10 +17,10 @@ exports.getMyProfile = async (req,res) => {
 
 exports.updateMyProfile = async (req,res) => {
     try{
-        const {name,email} = req.body;
+        const {name,email, phone, address} = req.body;
         const updatedUser = await User.findByIdAndUpdate(
             req.user.userId,
-            {name,email},
+            {name,email, phone, address},
             {new:true}
         ).select("-password");
         res.json(updatedUser);
@@ -27,3 +28,4 @@ exports.updateMyProfile = async (req,res) => {
         res.status(500).json({message:"failed to update profile"});
     }
 };
+

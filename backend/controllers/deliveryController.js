@@ -6,73 +6,28 @@ const Order = require("../models/order");
 const { getIO } = require("../socket");
 const { addTimelineEvent } = require("../utils/orderTimeline");
 const { canTransition } = require("../utils/orderState");
-
-exports.registerDelivery = async (req, res, next) => {
-  try {
-    const { name, email, password, licenseNumber, vehicleNumber } = req.body;
-
-    const exists = await User.findOne({ email });
-    if (exists) {
-      return res.status(409).json({ message: "User already exists" });
-    }
-
-    if (!req.file) {
-      return res.status(400).json({ message: "License document required" });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      role: "DELIVERY",
-      isActive: false,
-    });
-
-    const uploadLicense = () =>
-      new Promise((resolve, reject) => {
-        cloudinary.uploader
-          .upload_stream(
-            {
-              folder: "eatify/delivery-licenses",
-              resource_type: "raw",
-            },
-            (error, result) => {
-              if (error) return reject(error);
-              resolve(result);
-            },
-          )
-          .end(req.file.buffer);
-      });
-
-    const uploadResult = await uploadLicense();
-
-    await Delivery.create({
-      userId: user._id,
-      licenseNumber,
-      vehicleNumber,
-      licenseDocument: {
-        url: uploadResult.secure_url,
-        publicId: uploadResult.public_id,
-      },
-    });
-
-    res.status(201).json({
-      message: "Delivery partner registered. Await admin approval.",
-    });
-  } catch (err) {
-    next(err);
-  }
-};
+const Vendor = require("../models/vendor");
 
 exports.getAssignedOrders = async (req, res) => {
   try {
+    const vendors = await Vendor.find();
     const orders = await Order.find({
       deliveryPartnerId: req.user.userId,
-    }).sort({ createdAt: -1 });
+    })
+      .populate("vendorId", "name email")
+      .populate("customerId", "name phone")
+      .sort({ createdAt: -1 });
+      const ordersWithVendor = orders.map(order => {
+  const vendor = vendors.find(v => 
+    v.userId.toString() === order.vendorId?._id.toString()
+  );
+   return {
+    ...order.toObject(),
+    vendorDetails: vendor || null
+  };
+});
 
-    res.json(orders);
+    res.json(ordersWithVendor);
   } catch (error) {
     console.error("Fetch assigned orders error:", error);
     res.status(500).json({ message: "Failed to fetch assigned orders" });
@@ -83,13 +38,7 @@ exports.updateDeliveryStatus = async (req, res) => {
   try {
     const { status } = req.body;
 
-    const allowed = ["PICKED_UP", "DELIVERED"];
-
-    if (!allowed.includes(status)) {
-      return res.status(400).json({
-        message: "Invalid delivery status",
-      });
-    }
+    const allowed = ["PICKED_UP", "OUT_FOR_DELIVERY", "DELIVERED"];
 
     const order = await Order.findOne({
       _id: req.params.orderId,
@@ -101,22 +50,56 @@ exports.updateDeliveryStatus = async (req, res) => {
         message: "Order not found",
       });
     }
-    console.log("Current Order Status:", order.status);
-console.log("Requested Status:", status);
+    console.log("Current:", order.status);
+    console.log("Requested:", status);
+
+    if (status === "PICKED_UP" && order.status !== "DELIVERY_ASSIGNED") {
+      return res.status(400).json({
+        message: "Order must be assigned before pickup",
+      });
+    }
+
+    if (!allowed.includes(status)) {
+      return res.status(400).json({
+        message: "Invalid delivery status",
+      });
+    }
+
+    
+
     if (!canTransition(order.status, status)) {
       return res.status(400).json({
         message: `Invalid transition from ${order.status} to ${status}`,
       });
     }
+
     order.status = status;
+    await order.save();
+
+    const delivery = await Delivery.findOne({
+      userId: req.user.userId,
+    });
+
+    if (!delivery) {
+      return res.status(404).json({
+        message: "Delivery profile not found",
+      });
+    }
 
     if (status === "PICKED_UP") {
-      order.status = "PICKED_UP";
+      delivery.isAvailable = false;
+      delivery.currentOrder = order._id;
     }
     if (status === "DELIVERED") {
-      order.status = "DELIVERED";
+      delivery.isAvailable = true;
+      delivery.currentOrder = null;
     }
-
+    
+    try{
+    await delivery.save();
+    }catch(err){
+      console.error("Delivery Save error:", err)
+    }
     await addTimelineEvent(
       order,
       status,
@@ -124,9 +107,15 @@ console.log("Requested Status:", status);
         ? "Order picked up by delivery partner"
         : "Order delivered successfully",
     );
-    await order.save();
 
     const io = getIO();
+
+    if (io) {
+  io.to(`order:${order._id}`).emit("deliveryStatusUpdated", {
+    orderId: order._id,
+    status,
+  });
+}
 
     io.to(`order:${order._id}`).emit("deliveryStatusUpdated", {
       orderId: order._id,

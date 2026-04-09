@@ -18,6 +18,11 @@ import VendorDashboard from "../pages/vendor/VendorDashboard";
 import VendorMenu from "../pages/vendor/VendorMenu";
 import VendorOrders from "../pages/vendor/VendorOrders";
 import VendorProfile from "../pages/profile/VendorProfile";
+import VendorReview from "../pages/vendor/VendorReview";
+import RestaurantReviews from "../pages/customer/RestaurantReviews";
+import DeliveryDashboard from "../pages/delivery/DeliveryDashboard";
+import DeliveryOrders from "../pages/delivery/DeliveryOrders";
+import DeliveryEarnings from "../pages/delivery/DeliveryEarnings";
 
 const AppRoutes = () => {
   const location = useLocation();
@@ -53,9 +58,11 @@ const AppRoutes = () => {
         <Route
           path="/checkout"
           element={
+            <ProtectedRoute allowedRoles={["CUSTOMER"]}>
             <Layout>
               <Checkout />
             </Layout>
+            </ProtectedRoute>
           }
         />
 
@@ -77,7 +84,8 @@ const AppRoutes = () => {
           }
         />
 
-        <Route path="/profile" element={<Profile />} />
+        <Route path="/profile" 
+        element={<Profile />} />
 
         <Route
           path="/orders"
@@ -85,6 +93,17 @@ const AppRoutes = () => {
             <ProtectedRoute allowedRoles={["CUSTOMER"]}>
               <Layout>
                 <Orders />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+         <Route
+          path="/reviews/:id"
+          element={
+            <ProtectedRoute allowedRoles={["CUSTOMER"]}>
+              <Layout>
+                <RestaurantReviews />
               </Layout>
             </ProtectedRoute>
           }
@@ -138,6 +157,39 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={["VENDOR"]}>
                 <VendorProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/vendor/reviews"
+          element={
+            <ProtectedRoute allowedRoles={["VENDOR"]}>
+                <VendorReview />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/delivery/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={["DELIVERY"]}>
+                <DeliveryDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/delivery/orders"
+          element={
+            <ProtectedRoute allowedRoles={["DELIVERY"]}>
+                <DeliveryOrders />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/delivery/earnings"
+          element={
+            <ProtectedRoute allowedRoles={["DELIVERY"]}>
+                <DeliveryEarnings />
             </ProtectedRoute>
           }
         />

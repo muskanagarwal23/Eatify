@@ -441,7 +441,9 @@ const Home = () => {
         <p className="text-gray-300 mb-6 max-w-2xl mx-auto">
           Join Eatify and reach thousands of hungry customers in your area
         </p>
-        <button className="bg-gradient-to-r from-red-500 to-orange-500 hover:shadow-lg text-white px-8 py-3 rounded-full font-semibold transition-all">
+        <button className="bg-gradient-to-r from-red-500 to-orange-500 hover:shadow-lg text-white px-8 py-3 rounded-full font-semibold transition-all"
+        onClick={() => navigate("/Register")}
+        >
           Partner with Us
         </button>
       </div>

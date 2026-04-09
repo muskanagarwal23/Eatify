@@ -24,6 +24,15 @@ const deliverySchema = new mongoose.Schema(
     isApproved: {
       type: Boolean,
       default: false
+    },
+    isAvailable:{
+      type:Boolean,
+      default:true
+    },
+    currentOrder:{
+      type:mongoose.Schema.Types.ObjectId,
+      ref:"Order",
+      default:null
     }
   },
   { timestamps: true }

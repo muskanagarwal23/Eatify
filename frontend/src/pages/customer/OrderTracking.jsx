@@ -104,6 +104,8 @@ const OrderTracking = () => {
         return <FaCheck className="text-blue-500" />;
       case "PREPARING":
         return <FaUtensils className="text-orange-500" />;
+      case "READY":  
+        return <FaUtensils className="text-orange-500" />;
       case "DELIVERY_ASSIGNED":
         return <FaMotorcycle className="text-purple-500" />;
       case "PICKED_UP":
@@ -125,6 +127,8 @@ const OrderTracking = () => {
         return "Restaurant has accepted your order";
       case "PREPARING":
         return "Your food is being prepared";
+      case "READY":
+        return "Your food is ready to pick";  
       case "DELIVERY_ASSIGNED":
         return "Delivery partner assigned";
       case "PICKED_UP":
@@ -146,6 +150,8 @@ const OrderTracking = () => {
         return "Estimated: 15-25 minutes";
       case "PREPARING":
         return "Estimated: 10-20 minutes";
+      case "READY":
+        return "Estimated: 10-15 minutes";  
       case "DELIVERY_ASSIGNED":
         return "Estimated: 10-15 minutes";
       case "PICKED_UP":
@@ -279,6 +285,7 @@ const OrderTracking = () => {
               <div className="flex justify-between text-xs text-gray-500 mb-1">
                 <span>Order Placed</span>
                 <span>Preparing</span>
+                <span>Ready to pick up</span>
                 <span>On the Way</span>
                 <span>Delivered</span>
               </div>

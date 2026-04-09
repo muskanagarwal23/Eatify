@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { useState } from "react";
 import {
   FaShoppingCart,
@@ -8,16 +8,24 @@ import {
   FaTimes,
   FaUtensils,
 } from "react-icons/fa";
+import {loginSuccess} from "../../features/auth/authSlice";
 
 const Navbar = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, token } = useSelector((state) => state.auth);
   const isLoggedIn = !!token;
   const { items } = useSelector((state) => state.cart);
   const cartCount = items?.reduce((total, item) => total + item.quantity, 0);
+  
   const handleLogout = () => {
     localStorage.removeItem("token");
+
+    dispatch(loginSuccess({
+      user:null,
+      token:null,
+    }));
     navigate("/");
     setIsMenuOpen(false);
   };

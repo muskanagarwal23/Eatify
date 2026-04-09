@@ -42,9 +42,12 @@ const Login = () => {
 
       if (user.role === "VENDOR") {
         navigate("/vendor/dashboard");
-      } else if (user.role === "CUSTOMER") {
+      } else if (user.role === "DELIVERY")
+        navigate("/delivery/dashboard");
+      else if (user.role === "CUSTOMER") {
         navigate("/");
       }
+     
     } catch (err) {
       dispatch(loginFailure());
       toast.error("Your account is under review. We’ll notify you soon.");
